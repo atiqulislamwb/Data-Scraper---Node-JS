@@ -1,31 +1,52 @@
-import express from "express";
-import cheerio from "cheerio";
-import axios from "axios";
+import puppeteer from "puppeteer";
 
-const app = express();
+const screenShot1 = async () => {
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+  await page.goto("https://www.youtube.com");
+  await page.screenshot({ path: "youtube.png" });
 
-const PORT = 5000;
+  await browser.close();
+};
 
-const Url = "https://www.theguardian.com/international";
+const pdfUrl = "https://en.wikipedia.org/wiki/Bangladesh";
 
-axios(Url)
-  .then((response) => {
-    const html = response.data;
-    const $ = cheerio.load(html);
-    const articles = [];
+const createPdf = async () => {
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+  await page.goto(pdfUrl, {
+    waitUntil: "networkidle2",
+  });
+  await page.pdf({ path: "bangladeshinfo.pdf", format: "a4" });
 
-    $(".fc-item__title", html).each(function () {
-      const title = $(this).text();
-      const url = $(this).find("a").attr("href");
-      articles.push({
-        title,
-        url,
+  await browser.close();
+};
+
+(async () => {
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+  await page.goto("https://quotes.toscrape.com/");
+
+  const quotes = await page.evaluate(() => {
+    const quotesDiv = document.querySelectorAll(".quote");
+    let quotesArray = [];
+
+    quotesDiv.forEach((tagName, i) => {
+      const quoteInfo = tagName.querySelectorAll("span");
+      const mainQuote = quoteInfo[0];
+      const author = quoteInfo[1];
+      const authorName = author.querySelector("small");
+      const link = author.querySelector("a");
+      quotesArray.push({
+        quote: mainQuote.innerText,
+        authorName: authorName.innerText,
+        authorBio: link.href,
       });
     });
-    console.log(articles);
-  })
-  .catch((err) => console.log(err));
 
-app.listen(PORT, () => {
-  console.log(`server running on port ${PORT}`);
-});
+    return quotesArray;
+  });
+  console.log(quotes);
+
+  await browser.close();
+})();
